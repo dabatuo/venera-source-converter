@@ -4,6 +4,7 @@ const axios = require("axios");
 const sharp = require("sharp");
 const fs = require("fs");
 const path = require("path");
+const { injectSpeedInsights } = require("@vercel/speed-insights");
 
 process.on("uncaughtException", (error) => {
   console.error("=== 未捕获的异常 ===");
@@ -406,8 +407,112 @@ app.use((req, res, next) => {
   next();
 });
 
-// 健康检查
+// 健康检查 - 返回 HTML 页面并注入 Speed Insights
 app.get("/", (req, res) => {
+  const baseUrl = getBaseUrl(req);
+  const sources = loadedSources.map((s) => s.name).join(", ") || "None";
+  
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Venera Source Converter</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #333;
+    }
+    .container {
+      background: white;
+      border-radius: 10px;
+      padding: 40px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    h1 {
+      color: #667eea;
+      margin-bottom: 10px;
+    }
+    .status {
+      display: inline-block;
+      background: #10b981;
+      color: white;
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+    .info {
+      background: #f3f4f6;
+      padding: 15px;
+      border-radius: 5px;
+      margin: 15px 0;
+    }
+    .sources {
+      color: #667eea;
+      font-weight: bold;
+    }
+    .api-docs {
+      margin-top: 30px;
+    }
+    .endpoint {
+      background: #f9fafb;
+      border-left: 4px solid #667eea;
+      padding: 10px;
+      margin: 10px 0;
+      font-family: 'Courier New', monospace;
+    }
+    a {
+      color: #667eea;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🚀 Venera Source Converter</h1>
+    <div class="status">● Running</div>
+    
+    <div class="info">
+      <p><strong>Message:</strong> Venera Source Converter is running</p>
+      <p><strong>Loaded Sources:</strong> <span class="sources">${sources}</span></p>
+      <p><strong>Base URL:</strong> ${baseUrl}</p>
+    </div>
+    
+    <div class="api-docs">
+      <h2>📚 API Endpoints</h2>
+      <div class="endpoint">GET /config - Get all source configurations</div>
+      <div class="endpoint">GET /search/:text/:page?source=&lt;source&gt; - Search comics</div>
+      <div class="endpoint">GET /comic/:id?source=&lt;source&gt; - Get comic details</div>
+      <div class="endpoint">GET /photo/:id/chapter/:chapter?source=&lt;source&gt; - Get chapter images</div>
+      <div class="endpoint">GET /proxy?url=&lt;url&gt; - Proxy images</div>
+      <div class="endpoint">POST /reload - Reload all sources</div>
+    </div>
+    
+    <p style="margin-top: 30px; text-align: center; color: #6b7280;">
+      <a href="https://github.com/venera-app" target="_blank">Powered by Venera</a>
+    </p>
+  </div>
+  
+  <script>
+    window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/speed-insights/script.js"></script>
+</body>
+</html>`;
+  
+  res.send(html);
+});
+
+// API 端点 - 返回 JSON 格式的状态信息
+app.get("/api/status", (req, res) => {
   res.json({
     status: "ok",
     sources: loadedSources.map((s) => s.name),
