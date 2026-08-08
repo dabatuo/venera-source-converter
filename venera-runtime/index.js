@@ -5,6 +5,7 @@ const { UI } = require('./UI');
 const { createUuid, randomInt, randomDouble, DataStorage } = require('./Utils');
 const { Comic, ComicDetails, Comment } = require('./ComicTypes');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 class VeneraRuntime {
@@ -107,20 +108,28 @@ global.sendMessage = (msg) => {
 
 class ComicSource {
     constructor() {
-        this.name = '';
-        this.key = '';
-        this.version = '1.0.0';
-        this.minAppVersion = '1.0.0';
-        this.url = '';
-        this.baseUrl = '';
-        this.account = null;
-        this.explore = [];
-        this.category = null;
-        this.categoryComics = null;
-        this.search = null;
-        this.favorites = null;
-        this.comic = null;
-        this.translation = {};
+        const defaults = {
+            name: '',
+            key: '',
+            version: '1.0.0',
+            minAppVersion: '1.0.0',
+            url: '',
+            baseUrl: '',
+            account: null,
+            explore: [],
+            category: null,
+            categoryComics: null,
+            search: null,
+            favorites: null,
+            comic: null,
+            translation: {},
+        };
+        for (const [key, value] of Object.entries(defaults)) {
+            // 子类可能通过只读 getter 暴露同名属性（如 baseUrl），此时跳过默认值赋值
+            if (!(key in this)) {
+                this[key] = value;
+            }
+        }
     }
 
     // 数据持久化方法
@@ -174,8 +183,8 @@ module.exports = ${sourceClassName};
 
         const moduleCode = header + code + footer;
 
-        // 写入临时文件
-        const tempFile = path.join(__dirname, `temp_${Date.now()}.js`);
+        // 写入临时文件（Vercel 等只读部署环境使用系统临时目录）
+        const tempFile = path.join(os.tmpdir(), `venera_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.js`);
         fs.writeFileSync(tempFile, moduleCode);
 
         try {
@@ -192,7 +201,11 @@ module.exports = ${sourceClassName};
             // 合并简单字段（如果实例中没有的话）
             for (const [key, value] of Object.entries(simpleFields)) {
                 if (!source[key] || source[key] === '' || source[key] === null) {
-                    source[key] = value;
+                    try {
+                        source[key] = value;
+                    } catch (e) {
+                        // 跳过只读 getter 字段（如 baseUrl）
+                    }
                 }
             }
 
