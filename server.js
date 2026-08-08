@@ -308,22 +308,19 @@ async function loadAllSources() {
         // 设置默认设置值
         setDefaultSettings(source);
 
-        // 调用 init 方法（如果存在）
-        if (typeof source.init === "function") {
-          try {
-            // 处理可能返回 Promise 的 init 方法
-            await Promise.resolve(source.init());
-          } catch (initError) {
-            console.warn(`Init error for ${source.name}:`, initError.message);
-          }
-        }
-
         loadedSources.push({
           name: source.name,
           key: source.key,
           file: file,
         });
         console.log(`Loaded source: ${source.name} (${file})`);
+
+        // 源先登记，再后台初始化，避免 Vercel 上 init 网络请求阻塞可用性
+        if (typeof source.init === "function") {
+          Promise.resolve(source.init()).catch((initError) => {
+            console.warn(`Init error for ${source.name}:`, initError.message);
+          });
+        }
       } catch (error) {
         console.error(`Failed to load source ${file}:`, error.message);
       }
@@ -380,12 +377,13 @@ loadAllSources()
       for (const sourceInfo of loadedSources) {
         const source = runtime.getSource(sourceInfo.name);
         if (source && typeof source.init === "function") {
-          try {
-            await Promise.resolve(source.init());
-            console.log(`Refreshed source: ${source.name}`);
-          } catch (e) {
+          const initPromise = Promise.resolve(source.init()).catch((e) => {
             console.warn(`Failed to refresh source ${source.name}:`, e.message);
-          }
+          });
+          await Promise.race([
+            initPromise,
+            new Promise((resolve) => setTimeout(resolve, 10000)),
+          ]);
         }
       }
     }, 60 * 1000);
