@@ -36,6 +36,17 @@ class Network {
         while (attempts < maxAttempts) {
             attempts++;
             try {
+                let bodyData = data;
+                if (
+                    bodyData &&
+                    typeof bodyData === 'object' &&
+                    !Buffer.isBuffer(bodyData) &&
+                    !(bodyData instanceof ArrayBuffer) &&
+                    !ArrayBuffer.isView(bodyData) &&
+                    !Array.isArray(bodyData)
+                ) {
+                    bodyData = JSON.stringify(bodyData);
+                }
                 const response = await axios({
                     method: method.toLowerCase(),
                     url,
@@ -46,7 +57,7 @@ class Network {
                     },
                     httpAgent: new (require('http').Agent)({ keepAlive: false }),
                     httpsAgent: new (require('https').Agent)({ keepAlive: false }),
-                    data: data ? Buffer.from(data) : undefined,
+                    data: bodyData != null ? Buffer.from(bodyData) : undefined,
                     responseType: 'arraybuffer',
                     timeout: 30000,
                     validateStatus: () => true
