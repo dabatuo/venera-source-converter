@@ -350,6 +350,19 @@ function setDefaultSettings(source) {
       source.saveSetting(key, value);
     }
   }
+
+  // 应用源自身 settings 中声明的默认值（如 JMComic 的 apiDomain）
+  if (source.settings && typeof source.settings === 'object') {
+    for (const [key, config] of Object.entries(source.settings)) {
+      if (
+        config &&
+        Object.prototype.hasOwnProperty.call(config, 'default') &&
+        !source.loadSetting(key)
+      ) {
+        source.saveSetting(key, config.default);
+      }
+    }
+  }
 }
 
 // 初始化加载（异步）
