@@ -16,6 +16,7 @@
 | `ikmmh.js` | 爱看漫 |
 | `goda.js` | GoDa漫画 |
 | `manhuaren.js` | 漫画人 |
+| `jm.js` | 禁漫天堂 (JMComic) |
 
 ## 添加新源
 
