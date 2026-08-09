@@ -118,7 +118,17 @@ class Convert {
      * @returns {Uint8Array}
      */
     static decryptAesEcb(value, key) {
-        const decipher = crypto.createDecipheriv('aes-128-ecb', Buffer.from(key).slice(0, 16), Buffer.alloc(0));
+        const normalizedKey = Buffer.from(key);
+        const algorithm =
+            normalizedKey.length === 32
+                ? 'aes-256-ecb'
+                : normalizedKey.length === 24
+                  ? 'aes-192-ecb'
+                  : 'aes-128-ecb';
+        const aesKey = [16, 24, 32].includes(normalizedKey.length)
+            ? normalizedKey
+            : normalizedKey.slice(0, 16);
+        const decipher = crypto.createDecipheriv(algorithm, aesKey, Buffer.alloc(0));
         decipher.setAutoPadding(true);
         const decrypted = Buffer.concat([decipher.update(Buffer.from(value)), decipher.final()]);
         return new Uint8Array(decrypted);
